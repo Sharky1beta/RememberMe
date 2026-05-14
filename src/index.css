@@ -1,0 +1,337 @@
+:root {
+  --coral: #FF7F50;
+  --mint: #48D1CC;
+  --sky: #87CEEB;
+  --lemon: #FFD700;
+  --purple: #9370DB;
+  --bg-color: #F8FAFC;
+  --card-bg: #FFFFFF;
+  --text-primary: #1E293B;
+  --text-secondary: #64748B;
+  --shadow-sm: 0 2px 4px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+  --radius-lg: 24px;
+  --radius-md: 16px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  line-height: 1.5;
+  overflow-x: hidden;
+}
+
+.app-container {
+  max-width: 500px;
+  margin: 0 auto;
+  min-height: 100vh;
+  position: relative;
+  padding-bottom: 100px;
+}
+
+/* Header */
+header {
+  padding: 24px;
+  background: white;
+  border-bottom-left-radius: var(--radius-lg);
+  border-bottom-right-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  margin-bottom: 20px;
+}
+
+header h1 {
+  font-size: 28px;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--coral), var(--purple));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+header p {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+/* Grid Layout */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  padding: 0 16px;
+}
+
+.card {
+  position: relative; /* 确保删除按钮定位正确 */
+  background: var(--card-bg);
+  padding: 20px;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  border: 2px solid transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.card-delete-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(254, 242, 242, 0.8);
+  color: #FDA4AF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0; /* 默认隐藏 */
+  transition: all 0.2s;
+  z-index: 10;
+}
+
+.card:hover .card-delete-btn {
+  opacity: 1; /* 悬停显示 */
+}
+
+/* 移动端常显或通过长按触发，这里为了简单先让它在卡片右上角有一个淡色背景 */
+@media (max-width: 768px) {
+  .card-delete-btn {
+    opacity: 0.6;
+    background: #F8FAFC;
+  }
+}
+
+
+.card:active {
+  transform: scale(0.95);
+}
+
+.card.active {
+  border-color: var(--mint);
+  background: rgba(72, 209, 204, 0.05);
+}
+
+.card-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.card h3 {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.card p {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* Floating Action Button */
+.fab {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 64px;
+  height: 64px;
+  border-radius: 32px;
+  background: linear-gradient(135deg, var(--coral), var(--purple));
+  box-shadow: 0 10px 20px rgba(147, 112, 219, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  border: none;
+  cursor: pointer;
+  z-index: 100;
+}
+
+.fab:active {
+  transform: translateX(-50%) scale(0.9);
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: flex-end;
+  z-index: 200;
+}
+
+.modal-content {
+  background: white;
+  width: 100%;
+  border-top-left-radius: var(--radius-lg);
+  border-top-right-radius: var(--radius-lg);
+  padding: 32px 24px 60px 24px; /* 增加底部间距，防止手机系统栏遮挡 */
+  animation: slideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.btn {
+  width: 100%;
+  padding: 16px;
+  border-radius: var(--radius-md);
+  border: none;
+  font-weight: 700;
+  font-size: 16px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.btn-primary {
+  background: var(--coral);
+  color: white;
+}
+
+.btn-secondary {
+  background: #F1F5F9;
+  color: var(--text-primary);
+  margin-top: 12px;
+}
+
+/* AI Camera UI */
+.camera-preview {
+  width: 100%;
+  aspect-ratio: 4/3;
+  background: #000;
+  border-radius: var(--radius-md);
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  position: relative;
+  overflow: hidden;
+}
+
+.camera-shutter {
+  position: absolute;
+  bottom: 20px;
+  width: 60px;
+  height: 60px;
+  border-radius: 30px;
+  border: 4px solid white;
+  background: transparent;
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.item-card {
+  padding: 12px 16px !important;
+  align-items: center !important;
+  text-align: left !important;
+}
+
+.item-initial {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #F1F5F9, #E2E8F0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 20px;
+  color: var(--text-primary);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.quantity-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #F8FAFC;
+  padding: 4px;
+  border-radius: 12px;
+  border: 1px solid #E2E8F0;
+}
+
+.quantity-controls button {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: none;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s;
+}
+
+.quantity-controls button:hover:not(:disabled) {
+  background: var(--bg-color);
+  transform: translateY(-1px);
+}
+
+.quantity-controls button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.quantity-controls button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.quantity-badge {
+  font-weight: 700;
+  font-size: 14px;
+  min-width: 20px;
+  text-align: center;
+}
+
+.divider {
+  width: 1px;
+  height: 20px;
+  background: #E2E8F0;
+  margin: 0 4px;
+}
+
+.delete-btn {
+  color: #FDA4AF;
+  transition: color 0.2s;
+}
+
+.delete-btn:hover {
+  color: #F43F5E;
+}
