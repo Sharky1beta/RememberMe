@@ -46,7 +46,6 @@ const App: React.FC = () => {
   
   // 临时存储识别时的归属（用于从主页直接拍照的情况）
   const [tempCabinetId, setTempCabinetId] = useState('');
-  const [tempCategoryId, setTempCategoryId] = useState('');
   
   // AI State
   const [isIdentifying, setIsIdentifying] = useState(false);
@@ -105,7 +104,7 @@ const App: React.FC = () => {
     }
 
     // 查找或创建分类
-    let category = data.categories.find(c => c.name === categoryName.trim());
+    let category = data.categories.find((c: Category) => c.name === categoryName.trim());
     let newData = { ...data };
 
     if (!category) {
@@ -168,7 +167,7 @@ const App: React.FC = () => {
 
   const deleteItem = (id: string) => {
     if (confirm('确定要删除这件物品吗？')) {
-      setData({ ...data, items: data.items.filter(i => i.id !== id) });
+      setData({ ...data, items: data.items.filter((i: Item) => i.id !== id) });
     }
   };
 
@@ -179,6 +178,7 @@ const App: React.FC = () => {
       id: Date.now().toString(),
       name: newCabinetName,
       color: colorValue,
+      type: 'custom'
     };
     setData({ ...data, cabinets: [...data.cabinets, newCab] });
     setIsAddCabinetModalOpen(false);
