@@ -134,30 +134,30 @@ const App: React.FC = () => {
 
   const deleteCabinet = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    const itemsCount = data.items.filter(i => i.cabinetId === id).length;
+    const itemsCount = data.items.filter((i: Item) => i.cabinetId === id).length;
     if (confirm(`确定要删除这个柜子吗？${itemsCount > 0 ? `里面还有 ${itemsCount} 件物品也会被删除！` : ''}`)) {
       setData({
         ...data,
-        cabinets: data.cabinets.filter(c => c.id !== id),
-        items: data.items.filter(i => i.cabinetId !== id)
+        cabinets: data.cabinets.filter((c: Cabinet) => c.id !== id),
+        items: data.items.filter((i: Item) => i.cabinetId !== id)
       });
     }
   };
 
   const deleteCategory = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    const itemsCount = data.items.filter(i => i.categoryId === id).length;
+    const itemsCount = data.items.filter((i: Item) => i.categoryId === id).length;
     if (confirm(`确定要删除这个分类吗？${itemsCount > 0 ? `包含的 ${itemsCount} 件物品也会被删除！` : ''}`)) {
       setData({
         ...data,
-        categories: data.categories.filter(c => c.id !== id),
-        items: data.items.filter(i => i.categoryId !== id)
+        categories: data.categories.filter((c: Category) => c.id !== id),
+        items: data.items.filter((i: Item) => i.categoryId !== id)
       });
     }
   };
 
   const updateItemQuantity = (id: string, delta: number) => {
-    const updatedItems = data.items.map(item => {
+    const updatedItems = data.items.map((item: Item) => {
       if (item.id === id) {
         return { ...item, quantity: Math.max(0, item.quantity + delta) };
       }
@@ -217,15 +217,11 @@ const App: React.FC = () => {
     fileInputRef.current?.click();
   };
 
-  const filteredItems = data.items.filter(item => {
+  const filteredItems = data.items.filter((item: Item) => {
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    // 如果正在搜索，且没有选择具体的柜子/分类，则进行全局搜索
     if (searchQuery && view === 'cabinets') return matchesSearch;
-    
     const matchesCabinet = selectedCabinet ? item.cabinetId === selectedCabinet.id : true;
     const matchesCategory = selectedCategory ? item.categoryId === selectedCategory.id : true;
-    
     return matchesSearch && matchesCabinet && matchesCategory;
   });
 
@@ -251,8 +247,6 @@ const App: React.FC = () => {
           )}
         </div>
 
-
-        
         <div style={{ marginTop: 20, position: 'relative' }}>
           <Search size={18} style={{ position: 'absolute', left: 12, top: 12, color: 'var(--text-secondary)' }} />
           <input 
@@ -308,7 +302,7 @@ const App: React.FC = () => {
                       <div>
                         <h4 style={{ fontSize: '16px' }}>{item.name}</h4>
                         <p style={{ fontSize: '12px' }}>
-                          {data.cabinets.find(c => c.id === item.cabinetId)?.name} · {new Date(item.addedAt).toLocaleDateString()}
+                          {data.cabinets.find((c: Cabinet) => c.id === item.cabinetId)?.name} · {new Date(item.addedAt).toLocaleDateString()}
                         </p>
                       </div>
                     </div>
@@ -336,27 +330,30 @@ const App: React.FC = () => {
                   exit={{ opacity: 0, x: 20 }}
                   className="grid"
                 >
-                  {data.cabinets.map((cab: Cabinet) => (
-                    <motion.div 
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      key={cab.id} 
-                      className="card" 
-                      onClick={() => handleCabinetClick(cab)}
-                    >
-                      <button 
-                        className="card-delete-btn"
-                        onClick={(e) => deleteCabinet(cab.id, e)}
+                  {data.cabinets.map((cab: Cabinet) => {
+                    const itemsCount = data.items.filter((i: Item) => i.cabinetId === cab.id).length;
+                    return (
+                      <motion.div 
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        key={cab.id} 
+                        className="card" 
+                        onClick={() => handleCabinetClick(cab)}
                       >
-                        <Trash2 size={16} />
-                      </button>
-                      <div className="card-icon" style={{ background: cab.color }}>
-                        <Layout size={24} />
-                      </div>
-                      <h3>{cab.name}</h3>
-                      <p>{data.items.filter((i: Item) => i.cabinetId === cab.id).length} 件物品</p>
-                    </motion.div>
-                  ))}
+                        <button 
+                          className="card-delete-btn"
+                          onClick={(e) => deleteCabinet(cab.id, e)}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                        <div className="card-icon" style={{ background: cab.color }}>
+                          <Layout size={24} />
+                        </div>
+                        <h3>{cab.name}</h3>
+                        <p>{itemsCount} 件物品</p>
+                      </motion.div>
+                    );
+                  })}
                   <motion.div 
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
@@ -380,6 +377,7 @@ const App: React.FC = () => {
                 >
                   {data.categories.map((cat: Category) => {
                     const Icon = IconMap[cat.icon] || Folder;
+                    const itemsCount = data.items.filter((i: Item) => i.cabinetId === selectedCabinet?.id && i.categoryId === cat.id).length;
                     return (
                       <motion.div 
                         whileHover={{ scale: 1.02 }}
@@ -398,7 +396,7 @@ const App: React.FC = () => {
                           <Icon size={24} />
                         </div>
                         <h3>{cat.name}</h3>
-                        <p>{data.items.filter((i: Item) => i.cabinetId === selectedCabinet?.id && i.categoryId === cat.id).length} 件</p>
+                        <p>{itemsCount} 件</p>
                       </motion.div>
                     );
                   })}
@@ -566,7 +564,7 @@ const App: React.FC = () => {
                         style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #E2E8F0' }}
                       >
                         <option value="">请选择柜子...</option>
-                        {data.cabinets.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        {data.cabinets.map((c: Cabinet) => <option key={c.id} value={c.id}>{c.name}</option>)}
                       </select>
                     </div>
                   </div>
@@ -608,7 +606,7 @@ const App: React.FC = () => {
             <div style={{ marginBottom: 32 }}>
               <label style={{ display: 'block', marginBottom: 12, fontSize: '14px', fontWeight: 'bold' }}>选择主题色</label>
               <div style={{ display: 'flex', gap: 12 }}>
-                {colors.map(color => (
+                {colors.map((color: { value: string; name: string; hex: string }) => (
                   <div 
                     key={color.value}
                     onClick={() => setSelectedColor(color.value)}
