@@ -21,7 +21,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { db } from './services/db';
 import type { Item, Category, Cabinet } from './services/db';
-import { identifyImage } from './services/ai';
+import { identifyImage, jumpToGoogleLens } from './services/ai';
 
 const IconMap: Record<string, React.ElementType> = {
   Pill,
@@ -51,6 +51,7 @@ const App: React.FC = () => {
   const [isIdentifying, setIsIdentifying] = useState(false);
   const [identifiedName, setIdentifiedName] = useState('');
   const [identifiedCategory, setIdentifiedCategory] = useState('');
+  const [currentBase64, setCurrentBase64] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -196,6 +197,7 @@ const App: React.FC = () => {
       const reader = new FileReader();
       reader.onloadend = async () => {
         const base64 = reader.result as string;
+        setCurrentBase64(base64);
         try {
           const result = await identifyImage(base64);
           setIdentifiedName(result.name);
@@ -573,6 +575,17 @@ const App: React.FC = () => {
                 <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
                   <button className="btn btn-primary" onClick={() => addItem(identifiedName, identifiedCategory, 1)}>确认并添加</button>
                   <button className="btn btn-secondary" onClick={() => { setIdentifiedName(''); setIdentifiedCategory(''); }}>重新拍照</button>
+                </div>
+
+                <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: 16, marginTop: 8 }}>
+                  <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: 12 }}>如果 AI 识别不准，可以试试跳转到谷歌：</p>
+                  <button 
+                    className="btn" 
+                    style={{ background: '#4285F4', color: 'white', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                    onClick={() => currentBase64 && jumpToGoogleLens(currentBase64)}
+                  >
+                    <Search size={18} /> 使用 Google Lens 深度识别
+                  </button>
                 </div>
               </>
             )}

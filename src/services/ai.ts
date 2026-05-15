@@ -71,3 +71,18 @@ export async function identifyImage(base64Image: string): Promise<AiResult> {
     throw error;
   }
 }
+
+/**
+ * 彻底跳转到 Google 识图
+ */
+export function jumpToGoogleLens(_base64Image: string) {
+  // 由于 Web 端直接 POST 图片到谷歌 Lens 接口受限（CSRF），
+  // 最稳妥且符合用户预期的做法是引导跳转到 Lens 上传页。
+  // 用户在手机端只需点击“相机”图标，由于刚拍过照，系统通常会提示选取最后一张照片。
+  window.open(`https://lens.google.com/search?p=1`, '_blank');
+  
+  // 增加友好提示
+  setTimeout(() => {
+    alert('已为你跳转到 Google Lens。\n\n请点击页面上的“相机图标”并选择刚才拍摄的照片即可获得最精准的识别结果（含 AI 概览）。');
+  }, 500);
+}
