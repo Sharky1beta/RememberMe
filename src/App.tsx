@@ -186,32 +186,20 @@ const App: React.FC = () => {
     setNewCabinetName('');
   };
 
-  const handleCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setIsIdentifying(true);
-    setError(null);
-    
     try {
       const reader = new FileReader();
-      reader.onloadend = async () => {
+      reader.onloadend = () => {
         const base64 = reader.result as string;
         setCurrentBase64(base64);
-        try {
-          const result = await identifyImage(base64);
-          setIdentifiedName(result.name);
-          setIdentifiedCategory(result.category);
-        } catch (err: any) {
-          setError(err.message || "识别失败，请检查 API Key 配置");
-        } finally {
-          setIsIdentifying(false);
-        }
+        setIsIdentifying(false);
       };
       reader.readAsDataURL(file);
     } catch (err) {
-      setError("读取图片失败");
-      setIsIdentifying(false);
+      console.error("读取图片失败", err);
     }
   };
 
@@ -524,40 +512,40 @@ const App: React.FC = () => {
                   AI 将自动识别物品名称并协助您归档
                 </p>
               </>
-            {/* 结果显示区域 */}
-            {identifiedName && (
-              <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: '12px', display: 'block', marginBottom: 4, textAlign: 'left' }}>物品名称</label>
-                  <input 
-                    type="text" 
-                    value={identifiedName} 
-                    onChange={(e) => setIdentifiedName(e.target.value)}
-                    style={{
-                      width: '100%', padding: '12px', borderRadius: '12px', 
-                      border: '2px solid var(--mint)', textAlign: 'left',
-                      fontSize: '16px', fontWeight: 'bold'
-                    }}
-                  />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: '12px', display: 'block', marginBottom: 4, textAlign: 'left' }}>自动分类</label>
-                  <input 
-                    type="text" 
-                    value={identifiedCategory} 
-                    onChange={(e) => setIdentifiedCategory(e.target.value)}
-                    style={{
-                      width: '100%', padding: '12px', borderRadius: '12px', 
-                      border: '2px solid var(--sky)', textAlign: 'left',
-                      fontSize: '16px', fontWeight: 'bold'
-                    }}
-                  />
-                </div>
+            {/* 核心输入区域 (不再等待 AI) */}
+            <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: '12px', display: 'block', marginBottom: 4, textAlign: 'left' }}>物品名称</label>
+                <input 
+                  type="text" 
+                  placeholder="输入名称..."
+                  value={identifiedName} 
+                  onChange={(e) => setIdentifiedName(e.target.value)}
+                  style={{
+                    width: '100%', padding: '12px', borderRadius: '12px', 
+                    border: '1px solid #E2E8F0', textAlign: 'left',
+                    fontSize: '16px'
+                  }}
+                />
               </div>
-            )}
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: '12px', display: 'block', marginBottom: 4, textAlign: 'left' }}>物品分类</label>
+                <input 
+                  type="text" 
+                  placeholder="如：药品"
+                  value={identifiedCategory} 
+                  onChange={(e) => setIdentifiedCategory(e.target.value)}
+                  style={{
+                    width: '100%', padding: '12px', borderRadius: '12px', 
+                    border: '1px solid #E2E8F0', textAlign: 'left',
+                    fontSize: '16px'
+                  }}
+                />
+              </div>
+            </div>
 
             {/* 如果在主页点击，需要选择柜子 */}
-            {identifiedName && !selectedCabinet && (
+            {!selectedCabinet && (
               <div style={{ marginBottom: 24, textAlign: 'left' }}>
                 <div style={{ marginBottom: 12 }}>
                   <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: 4 }}>存入柜子</label>
@@ -575,31 +563,33 @@ const App: React.FC = () => {
 
             {/* 底部操作区 */}
             <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
-              {identifiedName ? (
-                <>
-                  <button className="btn btn-primary" onClick={() => addItem(identifiedName, identifiedCategory, 1)}>确认并添加</button>
-                  <button className="btn btn-secondary" onClick={() => { setIdentifiedName(''); setIdentifiedCategory(''); }}>重新拍照</button>
-                </>
-              ) : !isIdentifying && (
-                <button className="btn btn-secondary" style={{ width: '100%' }} onClick={openCamera}>点击拍照/选择图片</button>
-              )}
+              <button 
+                className="btn btn-primary" 
+                onClick={() => addItem(identifiedName, identifiedCategory, 1)}
+                disabled={!identifiedName || (!selectedCabinet && !tempCabinetId)}
+              >
+                确认添加
+              </button>
+              <button className="btn btn-secondary" onClick={() => { setIdentifiedName(''); setIdentifiedCategory(''); setCurrentBase64(null); }}>
+                重新拍照
+              </button>
             </div>
 
-            {/* Google Lens 强力辅助 (常显，只要有图就能用) */}
+            {/* Google Lens 强力辅助 */}
             {currentBase64 && (
               <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: 16, marginTop: 8 }}>
-                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: 12, textAlign: 'center' }}>
-                  {isIdentifying ? '识别慢？试试直接去谷歌：' : '或者使用谷歌深度识别：'}
-                </p>
                 <button 
                   className="btn" 
                   style={{ background: '#4285F4', color: 'white', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
                   onClick={() => jumpToGoogleLens(currentBase64)}
                 >
-                  <Search size={18} /> 使用 Google Lens 识别
+                  <Search size={18} /> 没想好名字？去 Google Lens 搜搜
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
           </div>
         </div>
       )}
