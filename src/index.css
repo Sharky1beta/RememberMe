@@ -218,8 +218,30 @@ header p {
 .btn-secondary {
   background: #F1F5F9;
   color: var(--text-primary);
-  margin-top: 12px;
 }
+
+/* Header Buttons */
+.btn-icon {
+  background: #F1F5F9;
+  border: none;
+  padding: 8px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-icon-static {
+  padding: 8px;
+  background: var(--lemon);
+  border-radius: 50%;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 
 /* AI Camera UI */
 .camera-preview {

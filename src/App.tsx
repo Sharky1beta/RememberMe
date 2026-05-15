@@ -21,7 +21,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { db } from './services/db';
 import type { Item, Category, Cabinet } from './services/db';
-import { identifyImage, jumpToGoogleLens } from './services/ai';
+import { jumpToGoogleLens } from './services/ai';
 
 const IconMap: Record<string, React.ElementType> = {
   Pill,
@@ -44,10 +44,10 @@ const App: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'done'>('done');
   
-  // 临时存储识别时的归属（用于从主页直接拍照的情况）
+  // 临时存储识别时的归属
   const [tempCabinetId, setTempCabinetId] = useState('');
   
-  // AI State
+  // State
   const [isIdentifying, setIsIdentifying] = useState(false);
   const [identifiedName, setIdentifiedName] = useState('');
   const [identifiedCategory, setIdentifiedCategory] = useState('');
@@ -88,23 +88,15 @@ const App: React.FC = () => {
     setIsAiModalOpen(false);
     setIdentifiedName('');
     setIdentifiedCategory('');
+    setCurrentBase64(null);
     setError(null);
   };
 
   const addItem = (name: string, categoryName: string, quantity: number) => {
     const cabinetId = selectedCabinet?.id || tempCabinetId;
-    
-    if (!cabinetId) {
-      alert('请先选择收纳位置（柜子）');
-      return;
-    }
+    if (!cabinetId) { alert('请先选择收纳位置（柜子）'); return; }
+    if (!categoryName.trim()) { alert('物品分类不能为空'); return; }
 
-    if (!categoryName.trim()) {
-      alert('物品分类不能为空');
-      return;
-    }
-
-    // 查找或创建分类
     let category = data.categories.find((c: Category) => c.name === categoryName.trim());
     let newData = { ...data };
 
@@ -158,9 +150,7 @@ const App: React.FC = () => {
 
   const updateItemQuantity = (id: string, delta: number) => {
     const updatedItems = data.items.map((item: Item) => {
-      if (item.id === id) {
-        return { ...item, quantity: Math.max(0, item.quantity + delta) };
-      }
+      if (item.id === id) { return { ...item, quantity: Math.max(0, item.quantity + delta) }; }
       return item;
     });
     setData({ ...data, items: updatedItems });
@@ -189,7 +179,6 @@ const App: React.FC = () => {
   const handleCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     try {
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -198,14 +187,10 @@ const App: React.FC = () => {
         setIsIdentifying(false);
       };
       reader.readAsDataURL(file);
-    } catch (err) {
-      console.error("读取图片失败", err);
-    }
+    } catch (err) { console.error("读取图片失败", err); }
   };
 
-  const openCamera = () => {
-    fileInputRef.current?.click();
-  };
+  const openCamera = () => { fileInputRef.current?.click(); };
 
   const filteredItems = data.items.filter((item: Item) => {
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -227,11 +212,11 @@ const App: React.FC = () => {
             </div>
           </div>
           {view !== 'cabinets' ? (
-            <button onClick={handleBack} style={{ background: '#F1F5F9', border: 'none', padding: '8px', borderRadius: '50%' }}>
+            <button onClick={handleBack} className="btn-icon">
               <ChevronLeft size={24} />
             </button>
           ) : (
-            <div style={{ padding: '8px', background: 'var(--lemon)', borderRadius: '50%', color: 'white' }}>
+            <div className="btn-icon-static">
               <Plus size={24} />
             </div>
           )}
@@ -244,14 +229,7 @@ const App: React.FC = () => {
             placeholder="搜索物品..." 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ 
-              width: '100%', 
-              padding: '12px 12px 12px 40px', 
-              borderRadius: '12px', 
-              border: '1px solid #E2E8F0',
-              outline: 'none',
-              fontSize: '14px'
-            }}
+            style={{ width: '100%', padding: '12px 12px 12px 40px', borderRadius: '12px', border: '1px solid #E2E8F0' }}
           />
         </div>
       </header>
@@ -259,345 +237,137 @@ const App: React.FC = () => {
       <main>
         <AnimatePresence mode="wait">
           {searchQuery ? (
-            <motion.div 
-              key="search-results"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              style={{ padding: '0 16px' }}
-            >
+            <motion.div key="search" initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ padding: '0 16px' }}>
               <h2 style={{ marginBottom: 16, fontSize: '18px' }}>搜索结果 ({filteredItems.length})</h2>
-              {filteredItems.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-secondary)' }}>
-                  <Search size={48} style={{ marginBottom: 12, opacity: 0.3 }} />
-                  <p>没有找到相关物品</p>
-                </div>
-              ) : (
+              {filteredItems.length === 0 ? <p style={{ textAlign: 'center', color: '#94A3B8' }}>没有找到相关物品</p> : 
                 filteredItems.map((item: Item) => (
-                  <motion.div 
-                    layout
-                    key={item.id} 
-                    className="card item-card" 
-                    style={{ 
-                      flexDirection: 'row', 
-                      justifyContent: 'space-between', 
-                      marginBottom: 12,
-                      textAlign: 'left'
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                      <div className="item-initial">
-                        {item.name[0]}
-                      </div>
-                      <div>
-                        <h4 style={{ fontSize: '16px' }}>{item.name}</h4>
-                        <p style={{ fontSize: '12px' }}>
-                          {data.cabinets.find((c: Cabinet) => c.id === item.cabinetId)?.name} · {new Date(item.addedAt).toLocaleDateString()}
-                        </p>
-                      </div>
+                  <div key={item.id} className="card item-card" style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
+                    <div>
+                      <h4>{item.name}</h4>
+                      <p style={{ fontSize: '12px' }}>{data.cabinets.find((c: Cabinet) => c.id === item.cabinetId)?.name}</p>
                     </div>
-                    
                     <div className="quantity-controls">
-                      <button onClick={() => updateItemQuantity(item.id, -1)} disabled={item.quantity <= 0}>
-                        <Minus size={14} />
-                      </button>
+                      <button onClick={() => updateItemQuantity(item.id, -1)}><Minus size={14} /></button>
                       <span className="quantity-badge">{item.quantity}</span>
-                      <button onClick={() => updateItemQuantity(item.id, 1)}>
-                        <Plus size={14} />
-                      </button>
+                      <button onClick={() => updateItemQuantity(item.id, 1)}><Plus size={14} /></button>
                     </div>
-                  </motion.div>
+                  </div>
                 ))
-              )}
+              }
             </motion.div>
           ) : (
             <>
               {view === 'cabinets' && (
-                <motion.div 
-                  key="cabinets"
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  className="grid"
-                >
-                  {data.cabinets.map((cab: Cabinet) => {
-                    const itemsCount = data.items.filter((i: Item) => i.cabinetId === cab.id).length;
-                    return (
-                      <motion.div 
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        key={cab.id} 
-                        className="card" 
-                        onClick={() => handleCabinetClick(cab)}
-                      >
-                        <button 
-                          className="card-delete-btn"
-                          onClick={(e) => deleteCabinet(cab.id, e)}
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                        <div className="card-icon" style={{ background: cab.color }}>
-                          <Layout size={24} />
-                        </div>
-                        <h3>{cab.name}</h3>
-                        <p>{itemsCount} 件物品</p>
-                      </motion.div>
-                    );
-                  })}
-                  <motion.div 
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    className="card" 
-                    style={{ border: '2px dashed #E2E8F0', background: 'transparent' }}
-                    onClick={() => setIsAddCabinetModalOpen(true)}
-                  >
-                    <Plus size={24} color="#CBD5E1" />
-                    <p>添加新柜子</p>
-                  </motion.div>
-                </motion.div>
+                <div className="grid">
+                  {data.cabinets.map((cab: Cabinet) => (
+                    <div key={cab.id} className="card" onClick={() => handleCabinetClick(cab)}>
+                      <button className="card-delete-btn" onClick={(e) => deleteCabinet(cab.id, e)}><Trash2 size={16} /></button>
+                      <div className="card-icon" style={{ background: cab.color }}><Layout size={24} /></div>
+                      <h3>{cab.name}</h3>
+                      <p>{data.items.filter((i: Item) => i.cabinetId === cab.id).length} 件物品</p>
+                    </div>
+                  ))}
+                  <div className="card" style={{ border: '2px dashed #E2E8F0', background: 'transparent' }} onClick={() => setIsAddCabinetModalOpen(true)}>
+                    <Plus size={24} color="#CBD5E1" /><p>添加新柜子</p>
+                  </div>
+                </div>
               )}
-
               {view === 'categories' && (
-                <motion.div 
-                  key="categories"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  className="grid"
-                >
+                <div className="grid">
                   {data.categories.map((cat: Category) => {
                     const Icon = IconMap[cat.icon] || Folder;
-                    const itemsCount = data.items.filter((i: Item) => i.cabinetId === selectedCabinet?.id && i.categoryId === cat.id).length;
                     return (
-                      <motion.div 
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        key={cat.id} 
-                        className="card" 
-                        onClick={() => handleCategoryClick(cat)}
-                      >
-                        <button 
-                          className="card-delete-btn"
-                          onClick={(e) => deleteCategory(cat.id, e)}
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                        <div className="card-icon" style={{ background: cat.color }}>
-                          <Icon size={24} />
-                        </div>
+                      <div key={cat.id} className="card" onClick={() => handleCategoryClick(cat)}>
+                        <button className="card-delete-btn" onClick={(e) => deleteCategory(cat.id, e)}><Trash2 size={16} /></button>
+                        <div className="card-icon" style={{ background: cat.color }}><Icon size={24} /></div>
                         <h3>{cat.name}</h3>
-                        <p>{itemsCount} 件</p>
-                      </motion.div>
+                      </div>
                     );
                   })}
-                </motion.div>
+                </div>
               )}
-
               {view === 'items' && (
-                <motion.div 
-                  key="items"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  style={{ padding: '0 16px' }}
-                >
-                  <h2 style={{ marginBottom: 16, fontSize: '18px' }}>
-                    {selectedCabinet?.name} / {selectedCategory?.name}
-                  </h2>
-                  {filteredItems.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-secondary)' }}>
-                      <Package size={48} style={{ marginBottom: 12, opacity: 0.3 }} />
-                      <p>这里空空如也，拍张照添加吧！</p>
+                <div style={{ padding: '0 16px' }}>
+                  <h2 style={{ marginBottom: 16, fontSize: '18px' }}>{selectedCabinet?.name} / {selectedCategory?.name}</h2>
+                  {filteredItems.map((item: Item) => (
+                    <div key={item.id} className="card item-card" style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
+                      <h4>{item.name}</h4>
+                      <div className="quantity-controls">
+                        <button onClick={() => updateItemQuantity(item.id, -1)}><Minus size={14} /></button>
+                        <span className="quantity-badge">{item.quantity}</span>
+                        <button onClick={() => updateItemQuantity(item.id, 1)}><Plus size={14} /></button>
+                        <button onClick={() => deleteItem(item.id)} className="delete-btn"><Trash2 size={18} /></button>
+                      </div>
                     </div>
-                  ) : (
-                    filteredItems.map((item: Item) => (
-                      <motion.div 
-                        layout
-                        key={item.id} 
-                        className="card item-card" 
-                        style={{ 
-                          flexDirection: 'row', 
-                          justifyContent: 'space-between', 
-                          marginBottom: 12,
-                          textAlign: 'left'
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                          <div className="item-initial">
-                            {item.name[0]}
-                          </div>
-                          <div>
-                            <h4 style={{ fontSize: '16px' }}>{item.name}</h4>
-                            <p style={{ fontSize: '12px' }}>
-                              {new Date(item.addedAt).toLocaleDateString()}
-                            </p>
-                          </div>
-                        </div>
-                        
-                        <div className="quantity-controls">
-                          <button onClick={() => updateItemQuantity(item.id, -1)} disabled={item.quantity <= 0}>
-                            <Minus size={14} />
-                          </button>
-                          <span className="quantity-badge">{item.quantity}</span>
-                          <button onClick={() => updateItemQuantity(item.id, 1)}>
-                            <Plus size={14} />
-                          </button>
-                          <div className="divider"></div>
-                          <button 
-                            onClick={() => deleteItem(item.id)}
-                            className="delete-btn"
-                          >
-                            <Trash2 size={18} />
-                          </button>
-                        </div>
-                      </motion.div>
-                    ))
-                  )}
-                </motion.div>
+                  ))}
+                </div>
               )}
             </>
           )}
         </AnimatePresence>
       </main>
 
-      <button className="fab" onClick={() => setIsAiModalOpen(true)}>
-        <Camera size={32} />
-      </button>
+      <button className="fab" onClick={() => setIsAiModalOpen(true)}><Camera size={32} /></button>
 
-      {/* AI Camera Modal */}
+      {/* 物品识别弹窗 */}
       {isAiModalOpen && (
         <div className="modal-overlay" onClick={closeAiModal}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h2 style={{ fontSize: '20px' }}>AI 物品识别</h2>
+              <h2 style={{ fontSize: '20px' }}>添加新物品</h2>
               <button onClick={closeAiModal} style={{ background: 'none', border: 'none' }}><X /></button>
             </div>
             
-            <input 
-              type="file" 
-              accept="image/*" 
-              capture="environment" 
-              ref={fileInputRef} 
-              onChange={handleCapture}
-              style={{ display: 'none' }}
-            />
+            <input type="file" accept="image/*" capture="environment" ref={fileInputRef} onChange={handleCapture} style={{ display: 'none' }} />
 
-            {error && (
-              <div style={{ 
-                background: '#FEF2F2', border: '1px solid #FCA5A5', 
-                padding: '12px', borderRadius: '12px', marginBottom: 16,
-                display: 'flex', gap: 8, color: '#991B1B', fontSize: '14px'
-              }}>
-                <AlertCircle size={18} />
-                <p>{error}</p>
+            {!currentBase64 ? (
+              <div className="camera-preview" onClick={openCamera}>
+                <div className="camera-shutter"></div><p>点击拍照/上传</p>
+              </div>
+            ) : (
+              <div style={{ marginBottom: 20, borderRadius: '12px', overflow: 'hidden', height: '160px' }}>
+                <img src={currentBase64} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </div>
             )}
 
-            {!identifiedName ? (
-              <>
-                <div className="camera-preview" onClick={openCamera} style={{ cursor: 'pointer' }}>
-                  {isIdentifying ? (
-                    <div style={{ textAlign: 'center' }}>
-                      <Loader2 size={48} className="animate-spin" style={{ margin: '0 auto 12px' }} />
-                      <p>正在分析中...</p>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="camera-shutter"></div>
-                      <p>点击这里拍照</p>
-                    </>
-                  )}
-                </div>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '14px', textAlign: 'center' }}>
-                  AI 将自动识别物品名称并协助您归档
-                </p>
-              </>
-            {/* 核心输入区域 (不再等待 AI) */}
             <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
               <div style={{ flex: 1 }}>
-                <label style={{ fontSize: '12px', display: 'block', marginBottom: 4, textAlign: 'left' }}>物品名称</label>
-                <input 
-                  type="text" 
-                  placeholder="输入名称..."
-                  value={identifiedName} 
-                  onChange={(e) => setIdentifiedName(e.target.value)}
-                  style={{
-                    width: '100%', padding: '12px', borderRadius: '12px', 
-                    border: '1px solid #E2E8F0', textAlign: 'left',
-                    fontSize: '16px'
-                  }}
-                />
+                <label style={{ fontSize: '12px', display: 'block', marginBottom: 4 }}>物品名称</label>
+                <input type="text" placeholder="输入名称..." value={identifiedName} onChange={(e) => setIdentifiedName(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #E2E8F0' }} />
               </div>
               <div style={{ flex: 1 }}>
-                <label style={{ fontSize: '12px', display: 'block', marginBottom: 4, textAlign: 'left' }}>物品分类</label>
-                <input 
-                  type="text" 
-                  placeholder="如：药品"
-                  value={identifiedCategory} 
-                  onChange={(e) => setIdentifiedCategory(e.target.value)}
-                  style={{
-                    width: '100%', padding: '12px', borderRadius: '12px', 
-                    border: '1px solid #E2E8F0', textAlign: 'left',
-                    fontSize: '16px'
-                  }}
-                />
+                <label style={{ fontSize: '12px', display: 'block', marginBottom: 4 }}>物品分类</label>
+                <input type="text" placeholder="如：药品" value={identifiedCategory} onChange={(e) => setIdentifiedCategory(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #E2E8F0' }} />
               </div>
             </div>
 
-            {/* 如果在主页点击，需要选择柜子 */}
             {!selectedCabinet && (
-              <div style={{ marginBottom: 24, textAlign: 'left' }}>
-                <div style={{ marginBottom: 12 }}>
-                  <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: 4 }}>存入柜子</label>
-                  <select 
-                    value={tempCabinetId} 
-                    onChange={(e) => setTempCabinetId(e.target.value)}
-                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #E2E8F0' }}
-                  >
-                    <option value="">请选择柜子...</option>
-                    {data.cabinets.map((c: Cabinet) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
-                </div>
+              <div style={{ marginBottom: 24 }}>
+                <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: 4 }}>存入柜子</label>
+                <select value={tempCabinetId} onChange={(e) => setTempCabinetId(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
+                  <option value="">请选择柜子...</option>
+                  {data.cabinets.map((c: Cabinet) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
               </div>
             )}
 
-            {/* 底部操作区 */}
             <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
-              <button 
-                className="btn btn-primary" 
-                onClick={() => addItem(identifiedName, identifiedCategory, 1)}
-                disabled={!identifiedName || (!selectedCabinet && !tempCabinetId)}
-              >
-                确认添加
-              </button>
-              <button className="btn btn-secondary" onClick={() => { setIdentifiedName(''); setIdentifiedCategory(''); setCurrentBase64(null); }}>
-                重新拍照
-              </button>
+              <button className="btn btn-primary" onClick={() => addItem(identifiedName, identifiedCategory, 1)} disabled={!identifiedName || (!selectedCabinet && !tempCabinetId)}>确认添加</button>
+              <button className="btn btn-secondary" onClick={() => { setIdentifiedName(''); setIdentifiedCategory(''); setCurrentBase64(null); }}>重新拍照</button>
             </div>
 
-            {/* Google Lens 强力辅助 */}
             {currentBase64 && (
-              <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: 16, marginTop: 8 }}>
-                <button 
-                  className="btn" 
-                  style={{ background: '#4285F4', color: 'white', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-                  onClick={() => jumpToGoogleLens(currentBase64)}
-                >
-                  <Search size={18} /> 没想好名字？去 Google Lens 搜搜
+              <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: 16 }}>
+                <button className="btn" style={{ background: '#4285F4', color: 'white', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }} onClick={() => jumpToGoogleLens(currentBase64)}>
+                  <Search size={18} /> 去 Google Lens 找灵感
                 </button>
               </div>
             )}
           </div>
         </div>
       )}
-          </div>
-        </div>
-      )}
-          </div>
-        </div>
-      )}
 
-      {/* Add Cabinet Modal */}
+      {/* 新增柜子弹窗 */}
       {isAddCabinetModalOpen && (
         <div className="modal-overlay" onClick={() => setIsAddCabinetModalOpen(false)}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
@@ -605,39 +375,18 @@ const App: React.FC = () => {
               <h2 style={{ fontSize: '20px' }}>新增收纳柜</h2>
               <button onClick={() => setIsAddCabinetModalOpen(false)} style={{ background: 'none', border: 'none' }}><X /></button>
             </div>
-            
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', marginBottom: 8, fontSize: '14px', fontWeight: 'bold' }}>柜子名称</label>
-              <input 
-                type="text" 
-                placeholder="例如：主卧大衣柜" 
-                value={newCabinetName}
-                onChange={(e) => setNewCabinetName(e.target.value)}
-                style={{ 
-                  width: '100%', padding: '12px', borderRadius: '12px', 
-                  border: '1px solid #E2E8F0', fontSize: '16px'
-                }}
-              />
+              <input type="text" placeholder="例如：大衣柜" value={newCabinetName} onChange={(e) => setNewCabinetName(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #E2E8F0' }} />
             </div>
-
             <div style={{ marginBottom: 32 }}>
               <label style={{ display: 'block', marginBottom: 12, fontSize: '14px', fontWeight: 'bold' }}>选择主题色</label>
               <div style={{ display: 'flex', gap: 12 }}>
-                {colors.map((color: { value: string; name: string; hex: string }) => (
-                  <div 
-                    key={color.value}
-                    onClick={() => setSelectedColor(color.value)}
-                    style={{ 
-                      width: 40, height: 40, borderRadius: '50%', 
-                      background: `var(${color.value})`, cursor: 'pointer',
-                      border: selectedColor === color.value ? '3px solid white' : 'none',
-                      boxShadow: selectedColor === color.value ? '0 0 0 2px var(--text-primary)' : 'none'
-                    }}
-                  />
+                {colors.map((color) => (
+                  <div key={color.value} onClick={() => setSelectedColor(color.value)} style={{ width: 40, height: 40, borderRadius: '50%', background: `var(${color.value})`, cursor: 'pointer', border: selectedColor === color.value ? '3px solid white' : 'none', boxShadow: selectedColor === color.value ? '0 0 0 2px var(--text-primary)' : 'none' }} />
                 ))}
               </div>
             </div>
-
             <button className="btn btn-primary" onClick={handleAddCabinet}>确认创建</button>
           </div>
         </div>
@@ -647,4 +396,3 @@ const App: React.FC = () => {
 };
 
 export default App;
-
