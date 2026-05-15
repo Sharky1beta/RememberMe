@@ -7,15 +7,12 @@ import {
   Search, 
   Layout, 
   Folder, 
-  Package,
   Pill,
   Utensils,
   Apple,
   Usb,
   X,
   Cloud,
-  Loader2,
-  AlertCircle,
   Minus
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -44,15 +41,11 @@ const App: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'done'>('done');
   
-  // 临时存储识别时的归属
   const [tempCabinetId, setTempCabinetId] = useState('');
   
-  // State
-  const [isIdentifying, setIsIdentifying] = useState(false);
   const [identifiedName, setIdentifiedName] = useState('');
   const [identifiedCategory, setIdentifiedCategory] = useState('');
   const [currentBase64, setCurrentBase64] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const colors = [
@@ -89,7 +82,6 @@ const App: React.FC = () => {
     setIdentifiedName('');
     setIdentifiedCategory('');
     setCurrentBase64(null);
-    setError(null);
   };
 
   const addItem = (name: string, categoryName: string, quantity: number) => {
@@ -184,7 +176,6 @@ const App: React.FC = () => {
       reader.onloadend = () => {
         const base64 = reader.result as string;
         setCurrentBase64(base64);
-        setIsIdentifying(false);
       };
       reader.readAsDataURL(file);
     } catch (err) { console.error("读取图片失败", err); }
@@ -309,7 +300,6 @@ const App: React.FC = () => {
 
       <button className="fab" onClick={() => setIsAiModalOpen(true)}><Camera size={32} /></button>
 
-      {/* 物品识别弹窗 */}
       {isAiModalOpen && (
         <div className="modal-overlay" onClick={closeAiModal}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
@@ -367,7 +357,6 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* 新增柜子弹窗 */}
       {isAddCabinetModalOpen && (
         <div className="modal-overlay" onClick={() => setIsAddCabinetModalOpen(false)}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
