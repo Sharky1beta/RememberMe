@@ -42,7 +42,6 @@ const App: React.FC = () => {
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'done'>('done');
   
   const [tempCabinetId, setTempCabinetId] = useState('');
-  
   const [identifiedName, setIdentifiedName] = useState('');
   const [identifiedCategory, setIdentifiedCategory] = useState('');
   const [currentBase64, setCurrentBase64] = useState<string | null>(null);
@@ -86,8 +85,8 @@ const App: React.FC = () => {
 
   const addItem = (name: string, categoryName: string, quantity: number) => {
     const cabinetId = selectedCabinet?.id || tempCabinetId;
-    if (!cabinetId) { alert('请先选择收纳位置（柜子）'); return; }
-    if (!categoryName.trim()) { alert('物品分类不能为空'); return; }
+    if (!cabinetId) { alert('请选择收纳位置'); return; }
+    if (!name.trim() || !categoryName.trim()) { alert('名称和分类不能为空'); return; }
 
     let category = data.categories.find((c: Category) => c.name === categoryName.trim());
     let newData = { ...data };
@@ -118,8 +117,7 @@ const App: React.FC = () => {
 
   const deleteCabinet = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    const itemsCount = data.items.filter((i: Item) => i.cabinetId === id).length;
-    if (confirm(`确定要删除这个柜子吗？${itemsCount > 0 ? `里面还有 ${itemsCount} 件物品也会被删除！` : ''}`)) {
+    if (confirm('确定要删除这个柜子吗？')) {
       setData({
         ...data,
         cabinets: data.cabinets.filter((c: Cabinet) => c.id !== id),
@@ -130,8 +128,7 @@ const App: React.FC = () => {
 
   const deleteCategory = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    const itemsCount = data.items.filter((i: Item) => i.categoryId === id).length;
-    if (confirm(`确定要删除这个分类吗？${itemsCount > 0 ? `包含的 ${itemsCount} 件物品也会被删除！` : ''}`)) {
+    if (confirm('确定要删除这个分类吗？')) {
       setData({
         ...data,
         categories: data.categories.filter((c: Category) => c.id !== id),
@@ -171,14 +168,9 @@ const App: React.FC = () => {
   const handleCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    try {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64 = reader.result as string;
-        setCurrentBase64(base64);
-      };
-      reader.readAsDataURL(file);
-    } catch (err) { console.error("读取图片失败", err); }
+    const reader = new FileReader();
+    reader.onloadend = () => { setCurrentBase64(reader.result as string); };
+    reader.readAsDataURL(file);
   };
 
   const openCamera = () => { fileInputRef.current?.click(); };
@@ -199,29 +191,18 @@ const App: React.FC = () => {
             <h1>RememberMe</h1>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-secondary)', fontSize: '12px' }}>
               <Cloud size={14} color={syncStatus === 'done' ? 'var(--mint)' : 'var(--coral)'} />
-              <span>{syncStatus === 'done' ? '已同步至云端' : '正在同步...'}</span>
+              <span>{syncStatus === 'done' ? '已同步' : '同步中'}</span>
             </div>
           </div>
           {view !== 'cabinets' ? (
-            <button onClick={handleBack} className="btn-icon">
-              <ChevronLeft size={24} />
-            </button>
+            <button onClick={handleBack} className="btn-icon"><ChevronLeft size={24} /></button>
           ) : (
-            <div className="btn-icon-static">
-              <Plus size={24} />
-            </div>
+            <div className="btn-icon-static"><Plus size={24} /></div>
           )}
         </div>
-
         <div style={{ marginTop: 20, position: 'relative' }}>
           <Search size={18} style={{ position: 'absolute', left: 12, top: 12, color: 'var(--text-secondary)' }} />
-          <input 
-            type="text" 
-            placeholder="搜索物品..." 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ width: '100%', padding: '12px 12px 12px 40px', borderRadius: '12px', border: '1px solid #E2E8F0' }}
-          />
+          <input type="text" placeholder="搜索物品..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} style={{ width: '100%', padding: '12px 12px 12px 40px', borderRadius: '12px', border: '1px solid #E2E8F0' }} />
         </div>
       </header>
 
@@ -229,22 +210,16 @@ const App: React.FC = () => {
         <AnimatePresence mode="wait">
           {searchQuery ? (
             <motion.div key="search" initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ padding: '0 16px' }}>
-              <h2 style={{ marginBottom: 16, fontSize: '18px' }}>搜索结果 ({filteredItems.length})</h2>
-              {filteredItems.length === 0 ? <p style={{ textAlign: 'center', color: '#94A3B8' }}>没有找到相关物品</p> : 
-                filteredItems.map((item: Item) => (
-                  <div key={item.id} className="card item-card" style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
-                    <div>
-                      <h4>{item.name}</h4>
-                      <p style={{ fontSize: '12px' }}>{data.cabinets.find((c: Cabinet) => c.id === item.cabinetId)?.name}</p>
-                    </div>
-                    <div className="quantity-controls">
-                      <button onClick={() => updateItemQuantity(item.id, -1)}><Minus size={14} /></button>
-                      <span className="quantity-badge">{item.quantity}</span>
-                      <button onClick={() => updateItemQuantity(item.id, 1)}><Plus size={14} /></button>
-                    </div>
+              {filteredItems.map((item: Item) => (
+                <div key={item.id} className="card item-card" style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <div><h4>{item.name}</h4><p style={{ fontSize: '12px' }}>{data.cabinets.find((c: Cabinet) => c.id === item.cabinetId)?.name}</p></div>
+                  <div className="quantity-controls">
+                    <button onClick={() => updateItemQuantity(item.id, -1)}><Minus size={14} /></button>
+                    <span className="quantity-badge">{item.quantity}</span>
+                    <button onClick={() => updateItemQuantity(item.id, 1)}><Plus size={14} /></button>
                   </div>
-                ))
-              }
+                </div>
+              ))}
             </motion.div>
           ) : (
             <>
@@ -255,7 +230,7 @@ const App: React.FC = () => {
                       <button className="card-delete-btn" onClick={(e) => deleteCabinet(cab.id, e)}><Trash2 size={16} /></button>
                       <div className="card-icon" style={{ background: cab.color }}><Layout size={24} /></div>
                       <h3>{cab.name}</h3>
-                      <p>{data.items.filter((i: Item) => i.cabinetId === cab.id).length} 件物品</p>
+                      <p>{data.items.filter((i: Item) => i.cabinetId === cab.id).length} 件</p>
                     </div>
                   ))}
                   <div className="card" style={{ border: '2px dashed #E2E8F0', background: 'transparent' }} onClick={() => setIsAddCabinetModalOpen(true)}>
@@ -307,30 +282,24 @@ const App: React.FC = () => {
               <h2 style={{ fontSize: '20px' }}>添加新物品</h2>
               <button onClick={closeAiModal} style={{ background: 'none', border: 'none' }}><X /></button>
             </div>
-            
             <input type="file" accept="image/*" capture="environment" ref={fileInputRef} onChange={handleCapture} style={{ display: 'none' }} />
-
             {!currentBase64 ? (
-              <div className="camera-preview" onClick={openCamera}>
-                <div className="camera-shutter"></div><p>点击拍照/上传</p>
-              </div>
+              <div className="camera-preview" onClick={openCamera}><div className="camera-shutter"></div><p>点击拍照/上传</p></div>
             ) : (
               <div style={{ marginBottom: 20, borderRadius: '12px', overflow: 'hidden', height: '160px' }}>
                 <img src={currentBase64} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </div>
             )}
-
             <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
               <div style={{ flex: 1 }}>
-                <label style={{ fontSize: '12px', display: 'block', marginBottom: 4 }}>物品名称</label>
+                <label style={{ fontSize: '12px', display: 'block', marginBottom: 4 }}>名称</label>
                 <input type="text" placeholder="输入名称..." value={identifiedName} onChange={(e) => setIdentifiedName(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #E2E8F0' }} />
               </div>
               <div style={{ flex: 1 }}>
-                <label style={{ fontSize: '12px', display: 'block', marginBottom: 4 }}>物品分类</label>
+                <label style={{ fontSize: '12px', display: 'block', marginBottom: 4 }}>分类</label>
                 <input type="text" placeholder="如：药品" value={identifiedCategory} onChange={(e) => setIdentifiedCategory(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #E2E8F0' }} />
               </div>
             </div>
-
             {!selectedCabinet && (
               <div style={{ marginBottom: 24 }}>
                 <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: 4 }}>存入柜子</label>
@@ -340,16 +309,14 @@ const App: React.FC = () => {
                 </select>
               </div>
             )}
-
             <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
               <button className="btn btn-primary" onClick={() => addItem(identifiedName, identifiedCategory, 1)} disabled={!identifiedName || (!selectedCabinet && !tempCabinetId)}>确认添加</button>
               <button className="btn btn-secondary" onClick={() => { setIdentifiedName(''); setIdentifiedCategory(''); setCurrentBase64(null); }}>重新拍照</button>
             </div>
-
             {currentBase64 && (
               <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: 16 }}>
                 <button className="btn" style={{ background: '#4285F4', color: 'white', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }} onClick={() => jumpToGoogleLens(currentBase64)}>
-                  <Search size={18} /> 去 Google Lens 找灵感
+                  <Search size={18} /> 去 Google Lens 识别
                 </button>
               </div>
             )}
@@ -365,11 +332,10 @@ const App: React.FC = () => {
               <button onClick={() => setIsAddCabinetModalOpen(false)} style={{ background: 'none', border: 'none' }}><X /></button>
             </div>
             <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', marginBottom: 8, fontSize: '14px', fontWeight: 'bold' }}>柜子名称</label>
+              <label style={{ display: 'block', marginBottom: 8, fontSize: '14px', fontWeight: 'bold' }}>名称</label>
               <input type="text" placeholder="例如：大衣柜" value={newCabinetName} onChange={(e) => setNewCabinetName(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #E2E8F0' }} />
             </div>
             <div style={{ marginBottom: 32 }}>
-              <label style={{ display: 'block', marginBottom: 12, fontSize: '14px', fontWeight: 'bold' }}>选择主题色</label>
               <div style={{ display: 'flex', gap: 12 }}>
                 {colors.map((color) => (
                   <div key={color.value} onClick={() => setSelectedColor(color.value)} style={{ width: 40, height: 40, borderRadius: '50%', background: `var(${color.value})`, cursor: 'pointer', border: selectedColor === color.value ? '3px solid white' : 'none', boxShadow: selectedColor === color.value ? '0 0 0 2px var(--text-primary)' : 'none' }} />
