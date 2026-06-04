@@ -1,55 +1,24 @@
-// 不再使用官方 SDK，改用走本地 Vite 代理的 Fetch 请求
-const API_KEY = import.meta.env.VITE_DOUBAO_API_KEY || "";
-const MODEL_ID = import.meta.env.VITE_DOUBAO_MODEL_ID || "";
-
+// 前端不再需要直接读取和暴露 API Key，这部分由后端安全处理
 export interface AiResult {
   name: string;
   category: string;
 }
 
 export async function identifyImage(base64Image: string): Promise<AiResult> {
-  if (!API_KEY || !MODEL_ID) {
-    throw new Error("请先在 .env 文件中配置 VITE_DOUBAO_API_KEY 和 VITE_DOUBAO_MODEL_ID");
-  }
-
   try {
-    const prompt = `你是一个物品识别助手。请识别这张图片中的主要物品，并为其提供一个简洁的二级分类。
-请严格以 JSON 格式返回，不要有任何 Markdown 标记或多余文字。
-格式示例：{"name": "感冒灵", "category": "药品"}
-物品名称要具体，分类要简洁（如：食品、电子产品、生活用品、药品、工具等）。`;
-
-    const url = `/doubao-api/api/v3/chat/completions`;
+    const url = `/api/doubao`;
     
     const response = await fetch(url, {
       method: "POST",
       headers: { 
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${API_KEY}`
+        "Content-Type": "application/json"
       },
-      body: JSON.stringify({
-        model: MODEL_ID,
-        messages: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "image_url",
-                image_url: { url: base64Image }
-              },
-              {
-                type: "text",
-                text: prompt
-              }
-            ]
-          }
-        ],
-        max_tokens: 100
-      })
+      body: JSON.stringify({ base64Image })
     });
 
     if (!response.ok) {
       const errData = await response.json().catch(() => ({}));
-      throw new Error(errData?.error?.message || `HTTP ${response.status}`);
+      throw new Error(errData?.error || `后端返回了 HTTP ${response.status}`);
     }
 
     const data = await response.json();
@@ -71,6 +40,7 @@ export async function identifyImage(base64Image: string): Promise<AiResult> {
     throw error;
   }
 }
+
 
 /**
  * 彻底跳转到 Google 识图
