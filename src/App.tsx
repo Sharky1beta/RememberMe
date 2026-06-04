@@ -12,13 +12,15 @@ import {
   Apple,
   Usb,
   X,
-  Cloud,
-  Minus
+  Minus,
+  Sparkles,
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { db } from './services/db';
 import type { Item, Category, Cabinet } from './services/db';
-import { jumpToGoogleLens } from './services/ai';
+import { identifyImage, jumpToGoogleLens } from './services/ai';
 
 const IconMap: Record<string, React.ElementType> = {
   Pill,
@@ -39,12 +41,12 @@ const App: React.FC = () => {
   const [newCabinetName, setNewCabinetName] = useState('');
   const [selectedColor, setSelectedColor] = useState('--coral');
   const [searchQuery, setSearchQuery] = useState('');
-  const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'done'>('done');
-  
   const [tempCabinetId, setTempCabinetId] = useState('');
   const [identifiedName, setIdentifiedName] = useState('');
   const [identifiedCategory, setIdentifiedCategory] = useState('');
   const [currentBase64, setCurrentBase64] = useState<string | null>(null);
+  const [isIdentifying, setIsIdentifying] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const colors = [
@@ -57,8 +59,6 @@ const App: React.FC = () => {
 
   useEffect(() => {
     db.saveData(data);
-    setSyncStatus('syncing');
-    setTimeout(() => setSyncStatus('done'), 1000);
   }, [data]);
 
   const handleCabinetClick = (cab: Cabinet) => {
@@ -81,6 +81,7 @@ const App: React.FC = () => {
     setIdentifiedName('');
     setIdentifiedCategory('');
     setCurrentBase64(null);
+    setError(null);
   };
 
   const addItem = (name: string, categoryName: string, quantity: number) => {
@@ -169,8 +170,26 @@ const App: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onloadend = () => { setCurrentBase64(reader.result as string); };
+    reader.onloadend = () => { 
+      setCurrentBase64(reader.result as string); 
+      setError(null);
+    };
     reader.readAsDataURL(file);
+  };
+
+  const handleAIIdentify = async () => {
+    if (!currentBase64) return;
+    setIsIdentifying(true);
+    setError(null);
+    try {
+      const result = await identifyImage(currentBase64);
+      setIdentifiedName(result.name);
+      setIdentifiedCategory(result.category);
+    } catch (err: any) {
+      setError(err.message || "识别失败，请检查网络或配置");
+    } finally {
+      setIsIdentifying(false);
+    }
   };
 
   const openCamera = () => { fileInputRef.current?.click(); };
@@ -189,10 +208,6 @@ const App: React.FC = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
             <h1>RememberMe</h1>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-secondary)', fontSize: '12px' }}>
-              <Cloud size={14} color={syncStatus === 'done' ? 'var(--mint)' : 'var(--coral)'} />
-              <span>{syncStatus === 'done' ? '已同步' : '同步中'}</span>
-            </div>
           </div>
           {view !== 'cabinets' ? (
             <button onClick={handleBack} className="btn-icon"><ChevronLeft size={24} /></button>
@@ -240,16 +255,27 @@ const App: React.FC = () => {
               )}
               {view === 'categories' && (
                 <div className="grid">
-                  {data.categories.map((cat: Category) => {
+                  {data.categories
+                    .filter((cat: Category) => 
+                      data.items.some((i: Item) => i.cabinetId === selectedCabinet?.id && i.categoryId === cat.id)
+                    )
+                    .map((cat: Category) => {
                     const Icon = IconMap[cat.icon] || Folder;
                     return (
                       <div key={cat.id} className="card" onClick={() => handleCategoryClick(cat)}>
                         <button className="card-delete-btn" onClick={(e) => deleteCategory(cat.id, e)}><Trash2 size={16} /></button>
                         <div className="card-icon" style={{ background: cat.color }}><Icon size={24} /></div>
                         <h3>{cat.name}</h3>
+                        <p>{data.items.filter((i: Item) => i.cabinetId === selectedCabinet?.id && i.categoryId === cat.id).length} 件</p>
                       </div>
                     );
                   })}
+                  {data.items.filter((i: Item) => i.cabinetId === selectedCabinet?.id).length === 0 && (
+                    <div style={{ gridColumn: 'span 2', textAlign: 'center', color: '#94A3B8', padding: '40px 0' }}>
+                      <p>这里空空如也~</p>
+                      <p style={{ fontSize: '12px', marginTop: 8 }}>点击下方相机按钮添加物品吧</p>
+                    </div>
+                  )}
                 </div>
               )}
               {view === 'items' && (
@@ -282,6 +308,18 @@ const App: React.FC = () => {
               <h2 style={{ fontSize: '20px' }}>添加新物品</h2>
               <button onClick={closeAiModal} style={{ background: 'none', border: 'none' }}><X /></button>
             </div>
+            
+            {error && (
+              <div style={{ 
+                background: '#FEF2F2', border: '1px solid #FCA5A5', 
+                padding: '12px', borderRadius: '12px', marginBottom: 16,
+                display: 'flex', gap: 8, color: '#991B1B', fontSize: '14px'
+              }}>
+                <AlertCircle size={18} />
+                <p>{error}</p>
+              </div>
+            )}
+
             <input type="file" accept="image/*" capture="environment" ref={fileInputRef} onChange={handleCapture} style={{ display: 'none' }} />
             {!currentBase64 ? (
               <div className="camera-preview" onClick={openCamera}><div className="camera-shutter"></div><p>点击拍照/上传</p></div>
@@ -311,10 +349,15 @@ const App: React.FC = () => {
             )}
             <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
               <button className="btn btn-primary" onClick={() => addItem(identifiedName, identifiedCategory, 1)} disabled={!identifiedName || (!selectedCabinet && !tempCabinetId)}>确认添加</button>
-              <button className="btn btn-secondary" onClick={() => { setIdentifiedName(''); setIdentifiedCategory(''); setCurrentBase64(null); }}>重新拍照</button>
+              <button className="btn btn-secondary" onClick={() => { setIdentifiedName(''); setIdentifiedCategory(''); setCurrentBase64(null); setError(null); }}>重新拍照</button>
             </div>
+            
             {currentBase64 && (
-              <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: 16 }}>
+              <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <button className="btn" style={{ background: '#10B981', color: 'white', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }} onClick={handleAIIdentify} disabled={isIdentifying}>
+                  {isIdentifying ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
+                  {isIdentifying ? '正在识别中...' : 'AI 自动识别并填充'}
+                </button>
                 <button className="btn" style={{ background: '#4285F4', color: 'white', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }} onClick={() => jumpToGoogleLens(currentBase64)}>
                   <Search size={18} /> 去 Google Lens 识别
                 </button>
