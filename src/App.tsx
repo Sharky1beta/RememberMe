@@ -169,13 +169,51 @@ const App: React.FC = () => {
   const handleCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // 添加前端图片压缩逻辑以避免 Vercel 413 报错 (Payload Too Large)
     const reader = new FileReader();
-    reader.onloadend = () => { 
-      setCurrentBase64(reader.result as string); 
-      setError(null);
+    reader.onloadend = () => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        // 限制最大宽高，避免长宽过大
+        const MAX_WIDTH = 800;
+        const MAX_HEIGHT = 800;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          // 导出为 70% 质量的 jpeg，通常能压缩到几百 KB 以内
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.7);
+          setCurrentBase64(compressedDataUrl);
+          setError(null);
+        } else {
+          // 如果 canvas 失败则 fallback
+          setCurrentBase64(reader.result as string);
+          setError(null);
+        }
+      };
+      img.src = reader.result as string;
     };
     reader.readAsDataURL(file);
   };
+
 
   const handleAIIdentify = async () => {
     if (!currentBase64) return;
