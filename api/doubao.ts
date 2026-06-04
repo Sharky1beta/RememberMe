@@ -10,12 +10,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'Missing image data' });
   }
 
-  // 尝试读取环境变量
+  // 获取环境变量。为了兼容已有设置，同时读取带 VITE_ 前缀的变量
   const API_KEY = process.env.DOUBAO_API_KEY || process.env.VITE_DOUBAO_API_KEY;
   const MODEL_ID = process.env.DOUBAO_MODEL_ID || process.env.VITE_DOUBAO_MODEL_ID;
 
   if (!API_KEY || !MODEL_ID) {
-    return res.status(500).json({ error: '服务端未配置 API_KEY 或 MODEL_ID 环境变量' });
+    return res.status(500).json({ error: '后端环境配置缺失 (API Key or Model ID)' });
   }
 
   const prompt = `你是一个物品识别助手。请识别这张图片中的主要物品，并为其提供一个简洁的二级分类。
@@ -38,8 +38,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           {
             role: "user",
             content: [
-              { type: "image_url", image_url: { url: base64Image } },
-              { type: "text", text: prompt }
+              {
+                type: "image_url",
+                image_url: { url: base64Image }
+              },
+              {
+                type: "text",
+                text: prompt
+              }
             ]
           }
         ],
@@ -48,17 +54,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     if (!response.ok) {
-      const errText = await response.text();
-      return res.status(response.status).json({ 
-        error: `豆包服务器返回错误 HTTP ${response.status}`, 
-        details: errText 
-      });
+      const errData = await response.json().catch(() => ({}));
+      return res.status(response.status).json({ error: errData?.error?.message || `HTTP ${response.status}` });
     }
 
     const data = await response.json();
     return res.status(200).json(data);
   } catch (error: any) {
     console.error("豆包 API 调用失败:", error);
-    return res.status(500).json({ error: '请求豆包 API 时发生网络错误', details: error.message });
+    return res.status(500).json({ error: error.message || 'Internal Server Error' });
   }
 }
